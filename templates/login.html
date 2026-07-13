@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - HisabFlow</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #eef2ff;
+        }
+        .box {
+            max-width: 420px;
+            margin: 70px auto;
+            background: white;
+            padding: 24px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        label {
+            display: block;
+            margin: 12px 0 6px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 16px;
+            width: 100%;
+            padding: 10px;
+            border: 0;
+            background: #2563eb;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .msg {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        a {
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>HisabFlow Login</h1>
+        {% if message %}
+        <div class="msg">{{ message }}</div>
+        {% endif %}
+        <form method="post">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Login</button>
+        </form>
+        <p>New user? <a href="{{ url_for('signup') }}">Sign up here</a></p>
+    </div>
+</body>
+</html>
