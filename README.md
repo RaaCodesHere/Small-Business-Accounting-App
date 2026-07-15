@@ -1,48 +1,40 @@
 # HisabFlow
 
-HisabFlow is a Flask app for tracking customer balances, transactions, and ledger history for small businesses and retail shops.
+HisabFlow is a Flask + SQLite ledger app for small shops to track customer balances and transaction history.
 
-## What it does
+## Features
 
-- User signup, login, and logout
-- Session-based access control with `@login_required`
-- Customer records with names, phone numbers, and running balances
-- Credit and debit transactions with automatic balance updates
-- Customer ledger pages with transaction history
-- Delete customer and delete transaction flows with balance reversal
+- User auth: signup, login, logout
+- Session-protected app routes (`@login_required`)
+- Customer management with opening balance
+- Credit/debit entries with automatic balance update
+- Customer ledger view with latest transactions first
+- Safe delete flows:
+	- delete transaction and reverse balance atomically
+	- delete customer with cascade delete of related transactions
 - Custom 404 and 500 pages
 
-## Tech Stack
+## Stack
 
 - Python 3
 - Flask 2.3.3
 - SQLite
 - Werkzeug 2.3.7
-- Jinja templates and static CSS
+- Jinja2 templates + CSS
 
-## Project Layout
+## Project Structure
 
 ```
-app.py                 Main Flask application and routes
-config.py              App settings and validation constants
-database.py            SQLite schema and query helpers
+app.py                 Flask routes, validation, session handling
+config.py              Config and validation constants
+database.py            Schema and DB helper functions
 middleware.py          Login protection decorator
 requirements.txt       Python dependencies
-static/css/style.css   App styling
+static/css/style.css   Styles
 templates/             HTML templates
 ```
 
-## Database
-
-The app creates three tables on startup:
-
-- `users` for account data
-- `customers` for customer profiles and balances
-- `transactions` for credit and debit entries
-
-Foreign keys are enabled, and customer deletion cascades to related records.
-
-## Running Locally
+## Quick Start
 
 ```bash
 python -m venv venv
@@ -51,31 +43,52 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open `http://127.0.0.1:5000` in your browser.
+Open: `http://127.0.0.1:5000`
 
-## Key Routes
+## Environment
 
-| Route | Method | Purpose |
-|-------|--------|---------|
+Optional environment variables:
+
+- `SECRET_KEY` (recommended in production)
+- `FLASK_ENV=development` to enable debug mode
+
+Defaults:
+
+- SQLite database path: `hisabflow.db`
+- Session lifetime: 24 hours
+
+## Data Model
+
+Tables created on startup (`init_db`):
+
+- `users`
+- `customers`
+- `transactions`
+
+Notes:
+
+- Foreign keys are enabled (`PRAGMA foreign_keys = ON`)
+- `customers -> transactions` uses `ON DELETE CASCADE`
+- Schema creation is idempotent
+
+## Routes
+
+| Route | Methods | Description |
+| --- | --- | --- |
 | `/` | GET | Redirect to login or dashboard |
-| `/signup` | GET, POST | Create an account |
-| `/login` | GET, POST | Sign in |
-| `/logout` | GET | Sign out |
-| `/dashboard` | GET | Customer overview |
-| `/customer/add` | GET, POST | Add a customer |
-| `/customer/<id>/ledger` | GET | View customer ledger |
-| `/transaction/add/<id>` | GET, POST | Add a transaction |
-| `/transaction/delete/<id>` | POST | Delete a transaction |
-| `/customer/delete/<id>` | POST | Delete a customer |
+| `/signup` | GET, POST | Register account |
+| `/login` | GET, POST | Authenticate user |
+| `/logout` | GET | End session |
+| `/dashboard` | GET | List customers + summary |
+| `/customer/add` | GET, POST | Add customer |
+| `/customer/<int:customer_id>/ledger` | GET | Customer ledger |
+| `/transaction/add/<int:customer_id>` | GET, POST | Add credit/debit |
+| `/transaction/delete/<int:transaction_id>` | POST | Delete transaction + reverse balance |
+| `/customer/delete/<int:customer_id>` | POST | Delete customer and related transactions |
 
-## Configuration
+## Security and Reliability
 
-- `SECRET_KEY` and `FLASK_ENV` are read from environment variables when available
-- Session lifetime is 24 hours
-- Database file defaults to `hisabflow.db`
-
-## Notes
-
-- Passwords are hashed with Werkzeug
-- Queries use parameter binding
-- The database schema is idempotent and initializes on app start
+- Passwords hashed with Werkzeug
+- Input validation for usernames, passwords, balances, and amounts
+- Parameterized SQL queries
+- Atomic DB transactions for multi-step writes
