@@ -1,37 +1,81 @@
 # HisabFlow
 
-## Introduction
-HisabFlow is a simple Flask based web application made for basic user login, signup and customer record management. This project is created in a very easy and student friendly way.
+HisabFlow is a Flask app for tracking customer balances, transactions, and ledger history for small businesses and retail shops.
 
-## Aim of the Project
-The main aim of this project is to learn how to build a small web app using Flask, SQLite and HTML templates.
+## What it does
 
-## Features
-- User signup and login
-- Session based authentication
-- Add customer name and phone number
-- Show customer list in dashboard
-- SQLite database support
+- User signup, login, and logout
+- Session-based access control with `@login_required`
+- Customer records with names, phone numbers, and running balances
+- Credit and debit transactions with automatic balance updates
+- Customer ledger pages with transaction history
+- Delete customer and delete transaction flows with balance reversal
+- Custom 404 and 500 pages
 
-## Technologies Used
-- Python
-- Flask
-- SQLite3
-- HTML
+## Tech Stack
 
-## How to Run
-1. Install Python.
-2. Install Flask using `pip install flask`.
-3. Run the app file with `python app.py`.
-4. Open the browser and go to the local server link shown in terminal.
+- Python 3
+- Flask 2.3.3
+- SQLite
+- Werkzeug 2.3.7
+- Jinja templates and static CSS
 
-## Folder Structure
-- `app.py` - Main Flask application
-- `templates/` - HTML files for login, signup and dashboard
-- `hisabflow.db` - SQLite database file
+## Project Layout
 
-## Future Scope
-This project can be improved later by adding edit, delete, search and better design options.
+```
+app.py                 Main Flask application and routes
+config.py              App settings and validation constants
+database.py            SQLite schema and query helpers
+middleware.py          Login protection decorator
+requirements.txt       Python dependencies
+static/css/style.css   App styling
+templates/             HTML templates
+```
 
-## Conclusion
-This project helped me understand the basic working of Flask web development and database handling in a simple way.
+## Database
+
+The app creates three tables on startup:
+
+- `users` for account data
+- `customers` for customer profiles and balances
+- `transactions` for credit and debit entries
+
+Foreign keys are enabled, and customer deletion cascades to related records.
+
+## Running Locally
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+Open `http://127.0.0.1:5000` in your browser.
+
+## Key Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/` | GET | Redirect to login or dashboard |
+| `/signup` | GET, POST | Create an account |
+| `/login` | GET, POST | Sign in |
+| `/logout` | GET | Sign out |
+| `/dashboard` | GET | Customer overview |
+| `/customer/add` | GET, POST | Add a customer |
+| `/customer/<id>/ledger` | GET | View customer ledger |
+| `/transaction/add/<id>` | GET, POST | Add a transaction |
+| `/transaction/delete/<id>` | POST | Delete a transaction |
+| `/customer/delete/<id>` | POST | Delete a customer |
+
+## Configuration
+
+- `SECRET_KEY` and `FLASK_ENV` are read from environment variables when available
+- Session lifetime is 24 hours
+- Database file defaults to `hisabflow.db`
+
+## Notes
+
+- Passwords are hashed with Werkzeug
+- Queries use parameter binding
+- The database schema is idempotent and initializes on app start
