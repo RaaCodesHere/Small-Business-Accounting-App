@@ -1,135 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - HisabFlow</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            color: #1e293b;
-        }
-        .wrap {
-            max-width: 950px;
-            margin: 30px auto;
-            padding: 0 16px;
-        }
-        .top {
-            background: white;
-            padding: 18px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            text-decoration: none;
-            background: #dc2626;
-            color: white;
-            padding: 10px 14px;
-            border-radius: 6px;
-        }
-        .panel {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin: 10px 0 6px;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        button {
-            margin-top: 14px;
-            padding: 10px 16px;
-            border: 0;
-            background: #2563eb;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .msg {
-            background: #dcfce7;
-            color: #166534;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #cbd5e1;
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background: #e2e8f0;
-        }
-    </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="top">
-            <div>
-                <h1>Welcome to HisabFlow, {{ username }}</h1>
-                <p>Logged in successfully.</p>
-            </div>
-            <a class="btn" href="{{ url_for('logout') }}">Logout</a>
-        </div>
+{% extends "base.html" %}
 
-        <div class="panel">
-            <h2>Add Customer</h2>
-            {% if message %}
-            <div class="msg">{{ message }}</div>
-            {% endif %}
-            <form method="post">
-                <label for="name">Customer Name</label>
-                <input type="text" id="name" name="name" required>
-                <label for="phone">Phone Number</label>
-                <input type="text" id="phone" name="phone" required>
-                <button type="submit">Save Customer</button>
-            </form>
-        </div>
+{% block title %}Dashboard - HisabFlow{% endblock %}
 
-        <div class="panel">
-            <h2>Customer List</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Phone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for customer in customers %}
-                    <tr>
-                        <td>{{ customer.id }}</td>
-                        <td>{{ customer.name }}</td>
-                        <td>{{ customer.phone }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="3">No customer added yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1>📊 Dashboard</h1>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card accent-success">
+            <h3>Total Customers</h3>
+            <div class="value">{{ total_customers }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total Outstanding</h3>
+            <div class="value">Rs. {{ "%.2f"|format(total_balance) }}</div>
         </div>
     </div>
-</body>
-</html>
+
+    <div class="table-container">
+        <div class="table-header">
+            <h2>👥 Customers</h2>
+            <a href="{{ url_for('add_customer') }}" class="btn-primary">+ New Customer</a>
+        </div>
+
+        {% if customers %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Current Balance</th>
+                    <th>Created On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td class="customer-name">{{ customer.name }}</td>
+                    <td>{{ customer.phone }}</td>
+                    <td>
+                        <span class="balance {% if customer.current_balance > 0 %}positive{% elif customer.current_balance < 0 %}negative{% endif %}">
+                            Rs. {{ "%.2f"|format(customer.current_balance) }}
+                        </span>
+                    </td>
+                    <td>{{ customer.created_at[:10] }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('ledger', customer_id=customer.id) }}" class="btn-secondary">View</a>
+                            <a href="{{ url_for('add_transaction', customer_id=customer.id) }}" class="btn-success">Transaction</a>
+                            <form method="POST" action="{{ url_for('delete_cust', customer_id=customer.id) }}" style="display: inline;" onsubmit="return confirm('Delete this customer and all transactions?');">
+                                <button type="submit" class="btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-message">
+            <p>No customers yet. <a href="{{ url_for('add_customer') }}">Add one now</a></p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }} - Ledger - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="ledger-container">
+        <div class="customer-header">
+            <div class="customer-info">
+                <h1>{{ customer.name }}</h1>
+                <div class="customer-details">
+                    <p><strong>Phone:</strong> {{ customer.phone }}</p>
+                    <p><strong>Account Created:</strong> {{ customer.created_at[:10] }}</p>
+                </div>
+            </div>
+            <div class="customer-balance {% if customer.current_balance >= 0 %}credit{% else %}owed{% endif %}">
+                <div style="font-size: 14px; margin-bottom: 10px; color: #7f8c8d;">Current Balance</div>
+                <div>Rs. {{ "%.2f"|format(customer.current_balance) }}</div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+            <a href="{{ url_for('add_transaction', customer_id=customer.id) }}" class="btn-primary">+ Add Transaction</a>
+            <a href="{{ url_for('dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+
+        <h2 style="margin-bottom: 20px;">📜 Transaction History</h2>
+        
+        {% if transactions %}
+        <div style="display: flex; flex-direction: column; gap: 0;">
+            {% for transaction in transactions %}
+            <div class="transaction-item">
+                <span class="transaction-type {{ transaction.transaction_type }}">
+                    {{ transaction.transaction_type.upper() }}
+                </span>
+                <div>
+                    {% if transaction.description %}
+                        <div class="transaction-description">{{ transaction.description }}</div>
+                    {% else %}
+                        <div class="transaction-description">No description</div>
+                    {% endif %}
+                    <div class="transaction-date">{{ transaction.created_at }}</div>
+                </div>
+                <div class="transaction-amount {% if transaction.transaction_type == 'debit' %}negative{% else %}positive{% endif %}">
+                    {% if transaction.transaction_type == 'credit' %}
+                        + Rs. {{ "%.2f"|format(transaction.amount) }}
+                    {% else %}
+                        - Rs. {{ "%.2f"|format(transaction.amount) }}
+                    {% endif %}
+                </div>
+                <div style="color: #7f8c8d; font-size: 12px; min-width: 100px;">
+                    Balance: Rs. {{ "%.2f"|format(transaction.balance_after) }}
+                </div>
+                <form method="POST" action="{{ url_for('delete_trans', transaction_id=transaction.id) }}" style="display: inline;" onsubmit="return confirm('Delete this transaction?');">
+                    <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 11px;">Remove</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-message">
+            <p>No transactions yet. <a href="{{ url_for('add_transaction', customer_id=customer.id) }}">Add one now</a></p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

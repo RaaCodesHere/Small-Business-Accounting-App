@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Add Transaction - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-container">
+        <h1>💳 Add Transaction</h1>
+        
+        <div style="background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <strong>Customer:</strong> {{ customer.name }}<br>
+            <strong>Current Balance:</strong> Rs. {{ "%.2f"|format(customer.current_balance) }}
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_transaction', customer_id=customer.id) }}">
+            <div class="form-group">
+                <label for="type">Transaction Type *</label>
+                <select id="type" name="type" required>
+                    <option value="">-- Select Type --</option>
+                    <option value="credit">Credit (Amount Owed)</option>
+                    <option value="debit">Debit (Payment Received)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="amount">Amount (Rs.) *</label>
+                <input type="number" id="amount" name="amount" required step="0.01" min="0.01" placeholder="Enter amount">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description (Optional)</label>
+                <textarea id="description" name="description" placeholder="Add transaction note (e.g., 'Invoice #123', 'Partial Payment')"></textarea>
+            </div>
+
+            <div style="background-color: #fff3cd; padding: 12px; border-radius: 5px; margin-bottom: 20px; font-size: 13px;">
+                <strong>Note:</strong> 
+                <ul style="margin-top: 8px; margin-left: 20px;">
+                    <li><strong>Credit:</strong> Increases what customer owes</li>
+                    <li><strong>Debit:</strong> Decreases what customer owes (payment received)</li>
+                </ul>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-primary" style="width: 100%;">Log Transaction</button>
+            </div>
+        </form>
+
+        <div class="form-footer">
+            <a href="{{ url_for('ledger', customer_id=customer.id) }}">Back to Ledger</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

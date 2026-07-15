@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="text-align: center; padding: 60px 20px;">
+        <h1 style="font-size: 72px; color: #e74c3c; margin-bottom: 20px;">500</h1>
+        <h2 style="color: #2c3e50; margin-bottom: 20px;">Server Error</h2>
+        <p style="color: #7f8c8d; margin-bottom: 30px; font-size: 16px;">Something went wrong on our end. Please try again later.</p>
+        <a href="{{ url_for('index') }}" class="btn-primary">Go to Home</a>
+    </div>
+</div>
+{% endblock %}
