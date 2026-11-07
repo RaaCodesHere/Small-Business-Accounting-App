@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-top-header">
+        <div>
+            <p class="eyebrow">Overview</p>
+            <h1>Business Dashboard</h1>
+            <p class="sub-description">Welcome back, <strong>{{ current_user.username }}</strong>. Here is your current business financial summary.</p>
+        </div>
+        <div class="header-action-group">
+            <a href="{{ url_for('journal') }}" class="btn-secondary">
+                📖 General Journal
+            </a>
+            <a href="{{ url_for('export_journal_csv') }}" class="btn-export">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export Full Book (CSV)
+            </a>
+            <a href="{{ url_for('add_customer') }}" class="btn-primary">
+                + New Customer
+            </a>
+        </div>
+    </div>
+
+    <!-- Overview Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card accent-primary">
+            <h3>Total Customers</h3>
+            <div class="value">{{ total_customers }}</div>
+            <div class="stat-meta">Active client accounts</div>
+        </div>
+        <div class="stat-card {% if total_balance >= 0 %}accent-success{% else %}accent-danger{% endif %}">
+            <h3>Total Outstanding Balance</h3>
+            <div class="value {% if total_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                Rs. {{ "%.2f"|format(total_balance) }}
+            </div>
+            <div class="stat-meta">
+                {% if total_balance >= 0 %}
+                    Net positive receivable balance
+                {% else %}
+                    Net payable balance
+                {% endif %}
+            </div>
+        </div>
+        <div class="stat-card">
+            <h3>Financial Journal</h3>
+            <div class="value text-sm font-medium" style="margin-top: 8px;">
+                <a href="{{ url_for('journal') }}" class="btn-text font-bold">Open Journal Log →</a>
+            </div>
+            <div class="stat-meta">View all historical transactions</div>
+        </div>
+        <div class="stat-card">
+            <h3>Recovery Vault</h3>
+            <div class="value text-sm font-medium" style="margin-top: 8px;">
+                <a href="{{ url_for('recovery_vault') }}" class="btn-text">
+                    {% if recovery_count and recovery_count > 0 %}
+                        <span class="badge-vault-count-inline">{{ recovery_count }}</span> Recoverable items →
+                    {% else %}
+                        Zero deleted items →
+                    {% endif %}
+                </a>
+            </div>
+            <div class="stat-meta">Reroll & restore deleted transactions</div>
+        </div>
+    </div>
+
+    <!-- Customers Table Section -->
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <p class="eyebrow">Accounts</p>
+                <h2>Customers & Accounts</h2>
+            </div>
+            <div class="customer-tools">
+                <input type="search" id="customer-search" class="customer-search" placeholder="Search by customer name or phone..." autocomplete="off">
+                <span id="customer-count" class="customer-count">{{ customers|length }} customer{% if customers|length != 1 %}s{% endif %}</span>
+            </div>
+        </div>
+
+        {% if customers %}
+        <div class="responsive-table-wrapper">
+            <table class="customer-table">
+                <thead>
+                    <tr>
+                        <th>Customer Name</th>
+                        <th>Phone</th>
+                        <th class="text-right">Current Balance</th>
+                        <th>Created On</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr class="customer-row">
+                        <td class="customer-name font-medium">
+                            <a href="{{ url_for('ledger', customer_id=customer.id) }}" class="customer-name-link">
+                                {{ customer.name }}
+                            </a>
+                        </td>
+                        <td class="text-muted font-mono text-sm">{{ customer.phone }}</td>
+                        <td class="text-right">
+                            <span class="balance {% if customer.current_balance > 0 %}positive{% elif customer.current_balance < 0 %}negative{% endif %} font-mono font-medium">
+                                Rs. {{ "%.2f"|format(customer.current_balance) }}
+                            </span>
+                        </td>
+                        <td class="text-muted text-sm">{{ customer.created_at[:10] }}</td>
+                        <td class="text-right">
+                            <div class="action-buttons">
+                                <a href="{{ url_for('ledger', customer_id=customer.id) }}" class="btn-secondary" title="View Customer Ledger">
+                                    Ledger
+                                </a>
+                                <a href="{{ url_for('add_transaction', customer_id=customer.id) }}" class="btn-success" title="Add Credit or Debit Entry">
+                                    + Entry
+                                </a>
+                                <a href="{{ url_for('customer_statement', customer_id=customer.id) }}" class="btn-statement-sm" title="Statement & PDF Print">
+                                    Statement
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_cust', customer_id=customer.id) }}" style="display: inline;" onsubmit="return confirm('Delete this customer and all their transactions?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn-danger" title="Delete Account">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="customer-no-results" class="empty-message is-hidden">
+            <p>No customers match your search query.</p>
+        </div>
+        {% else %}
+        <div class="empty-message">
+            <div class="empty-icon">👥</div>
+            <h3>No customers added yet</h3>
+            <p>Add your first customer or client account to begin tracking debits and credits.</p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('add_customer') }}" class="btn-primary">+ Add New Customer</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('customer-search');
+        const customerRows = Array.from(document.querySelectorAll('.customer-row'));
+        const customerCount = document.getElementById('customer-count');
+        const noResults = document.getElementById('customer-no-results');
+
+        if (!searchInput || !customerRows.length) return;
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            customerRows.forEach(function(row) {
+                const matches = row.textContent.toLowerCase().includes(searchTerm);
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleCount += 1;
+            });
+
+            if (customerCount) {
+                customerCount.textContent = visibleCount + (visibleCount === 1 ? ' customer' : ' customers');
+            }
+            if (noResults) {
+                noResults.classList.toggle('is-hidden', visibleCount !== 0);
+            }
+        });
+    });
+</script>
+{% endblock %}

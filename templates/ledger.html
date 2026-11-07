@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }} - Ledger - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="ledger-container">
+        <!-- Quick Reroll / Undo banner if user recently deleted a transaction -->
+        {% if last_archive_id %}
+        <div class="quick-undo-banner">
+            <div class="undo-content">
+                <span class="undo-icon">⚡</span>
+                <span>A transaction was recently removed and archived to the Recovery Vault.</span>
+            </div>
+            <div class="undo-actions">
+                <form method="POST" action="{{ url_for('restore_last_trans') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-undo-now">Reroll / Restore Now</button>
+                </form>
+                <a href="{{ url_for('recovery_vault') }}" class="btn-vault-link">Open Vault</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Customer Header Card -->
+        <div class="customer-header">
+            <div class="customer-info">
+                <p class="eyebrow">Customer Account Ledger</p>
+                <h1>{{ customer.name }}</h1>
+                <div class="customer-details">
+                    <p><strong>Phone:</strong> {{ customer.phone }}</p>
+                    <p><strong>Account Established:</strong> {{ customer.created_at[:10] }}</p>
+                </div>
+            </div>
+            <div class="customer-balance {% if customer.current_balance >= 0 %}credit{% else %}owed{% endif %}">
+                <div class="balance-title">Current Balance</div>
+                <div class="balance-amount">Rs. {{ "%.2f"|format(customer.current_balance) }}</div>
+                <div class="balance-hint">
+                    {% if customer.current_balance > 0 %}
+                        Credit in customer's favor
+                    {% elif customer.current_balance < 0 %}
+                        Customer owes you
+                    {% else %}
+                        Account settled (Zero balance)
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Statistics Row -->
+        <div class="ledger-kpis">
+            <div class="kpi-box">
+                <span class="kpi-num">{{ transactions|length }}</span>
+                <span class="kpi-label">Total Transactions</span>
+            </div>
+            <div class="kpi-box accent-success">
+                <span class="kpi-num text-success">+ Rs. {{ "%.2f"|format(total_credit) }}</span>
+                <span class="kpi-label">Total Credit (Payments In)</span>
+            </div>
+            <div class="kpi-box accent-danger">
+                <span class="kpi-num text-danger">- Rs. {{ "%.2f"|format(total_debit) }}</span>
+                <span class="kpi-label">Total Debit (Billed Out)</span>
+            </div>
+        </div>
+
+        <!-- Primary Actions Bar -->
+        <div class="ledger-action-bar">
+            <div class="action-left">
+                <a href="{{ url_for('add_transaction', customer_id=customer.id) }}" class="btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    + Add Transaction
+                </a>
+                <a href="{{ url_for('export_customer_csv', customer_id=customer.id) }}" class="btn-export">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Export CSV
+                </a>
+                <a href="{{ url_for('customer_statement', customer_id=customer.id) }}" class="btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print Statement / PDF
+                </a>
+            </div>
+            <div class="action-right">
+                <a href="{{ url_for('dashboard') }}" class="btn-text">Back to Dashboard</a>
+            </div>
+        </div>
+
+        <!-- Interactive Search & Filter Controls -->
+        <div class="ledger-controls">
+            <div class="search-filter-wrapper">
+                <input type="search" id="trans-search" class="ledger-search-input" placeholder="Search by description or amount..." autocomplete="off">
+            </div>
+            <div class="type-filter-group">
+                <button type="button" class="filter-pill active" data-filter="all">All ({{ transactions|length }})</button>
+                <button type="button" class="filter-pill" data-filter="credit">Credit Only</button>
+                <button type="button" class="filter-pill" data-filter="debit">Debit Only</button>
+            </div>
+        </div>
+
+        <h2 class="section-heading">Transaction History</h2>
+        
+        {% if transactions %}
+        <div class="transaction-list" id="transaction-list">
+            {% for transaction in transactions %}
+            <div class="transaction-item" data-type="{{ transaction.transaction_type }}" data-amount="{{ transaction.amount }}" data-desc="{{ transaction.description|lower if transaction.description else '' }}">
+                <div class="trans-left-group">
+                    <span class="transaction-type {{ transaction.transaction_type }}">
+                        {{ transaction.transaction_type.upper() }}
+                    </span>
+                    <div class="trans-desc-group">
+                        <div class="transaction-description">
+                            {{ transaction.description or 'Account Transaction' }}
+                        </div>
+                        <div class="transaction-date font-mono">{{ transaction.created_at }} • Ref #TX-{{ "%05d"|format(transaction.id) }}</div>
+                    </div>
+                </div>
+
+                <div class="trans-amount-group">
+                    <div class="transaction-amount {% if transaction.transaction_type == 'debit' %}negative{% else %}positive{% endif %}">
+                        {% if transaction.transaction_type == 'credit' %}
+                            + Rs. {{ "%.2f"|format(transaction.amount) }}
+                        {% else %}
+                            - Rs. {{ "%.2f"|format(transaction.amount) }}
+                        {% endif %}
+                    </div>
+                    <div class="balance-after-text">
+                        Balance: Rs. {{ "%.2f"|format(transaction.balance_after) }}
+                    </div>
+                </div>
+
+                <div class="trans-actions-group">
+                    <a href="{{ url_for('transaction_receipt', transaction_id=transaction.id) }}" class="btn-receipt-sm" title="Print payment receipt">
+                        🧾 Receipt
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_trans', transaction_id=transaction.id) }}" style="display: inline;" onsubmit="return confirm('Move transaction to Recovery Vault? Its balance impact will be safely reversed and you can reroll/restore it anytime.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn-danger-sm" title="Remove to Recovery Vault">Remove</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div id="trans-no-results" class="empty-message is-hidden">
+            <p>No transactions match your current search or filter.</p>
+        </div>
+        {% else %}
+        <div class="empty-message">
+            <div class="empty-icon">📝</div>
+            <h3>No transactions recorded yet</h3>
+            <p>Start recording credits and debits to track {{ customer.name }}'s financial balance.</p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('add_transaction', customer_id=customer.id) }}" class="btn-primary">+ Add First Transaction</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('trans-search');
+        const filterPills = document.querySelectorAll('.filter-pill');
+        const items = Array.from(document.querySelectorAll('.transaction-item'));
+        const noResults = document.getElementById('trans-no-results');
+
+        let activeFilter = 'all';
+
+        function applyFilter() {
+            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            let visibleCount = 0;
+
+            items.forEach(function(item) {
+                const type = item.getAttribute('data-type');
+                const desc = item.getAttribute('data-desc') || '';
+                const amount = item.getAttribute('data-amount') || '';
+                const text = item.textContent.toLowerCase();
+
+                const matchesType = (activeFilter === 'all') || (type === activeFilter);
+                const matchesSearch = !query || text.includes(query) || desc.includes(query) || amount.includes(query);
+
+                const isVisible = matchesType && matchesSearch;
+                item.style.display = isVisible ? 'flex' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.classList.toggle('is-hidden', visibleCount !== 0);
+            }
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', applyFilter);
+        }
+
+        filterPills.forEach(function(pill) {
+            pill.addEventListener('click', function() {
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                activeFilter = pill.getAttribute('data-filter');
+                applyFilter();
+            });
+        });
+    });
+</script>
+{% endblock %}

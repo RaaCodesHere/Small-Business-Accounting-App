@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Recovery Vault - HisabFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-top-header">
+        <div>
+            <p class="eyebrow">Audit & Safe Reversal</p>
+            <h1>Transaction Recovery Vault</h1>
+            <p class="sub-description">
+                Transactions removed from ledgers are safely preserved here. Click <strong>Reroll / Restore</strong> to instantly reinstate any transaction and automatically recalculate customer balances.
+            </p>
+        </div>
+        <div class="header-action-group">
+            <a href="{{ url_for('dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="vault-info-banner">
+        <div class="vault-info-icon">🛡️</div>
+        <div>
+            <h4>Zero Data Loss Guarantee</h4>
+            <p>Every transaction deletion is treated as a safe archive. Restoring ("rerolling") a transaction re-inserts it atomically into the customer's records and updates their outstanding balance with full precision.</p>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h2>Archived Transactions</h2>
+                <p class="table-subtitle">{{ deleted_transactions|length }} recoverable transaction{% if deleted_transactions|length != 1 %}s{% endif %}</p>
+            </div>
+            {% if deleted_transactions %}
+            <div class="table-search-box">
+                <input type="search" id="vault-search" placeholder="Search deleted records..." class="table-search-input">
+            </div>
+            {% endif %}
+        </div>
+
+        {% if deleted_transactions %}
+        <div class="responsive-table-wrapper">
+            <table class="vault-table" id="vault-table">
+                <thead>
+                    <tr>
+                        <th>Deleted Date</th>
+                        <th>Original Date</th>
+                        <th>Customer</th>
+                        <th>Type</th>
+                        <th class="text-right">Amount</th>
+                        <th>Description</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in deleted_transactions %}
+                    <tr class="vault-row">
+                        <td class="text-muted text-sm font-mono">{{ t.deleted_at }}</td>
+                        <td class="text-muted text-sm font-mono">{{ t.created_at }}</td>
+                        <td>
+                            {% if t.customer_name %}
+                                <a href="{{ url_for('ledger', customer_id=t.customer_id) }}" class="customer-link font-medium">
+                                    {{ t.customer_name }}
+                                </a>
+                                <span class="customer-phone-sub">{{ t.customer_phone }}</span>
+                            {% else %}
+                                <span class="text-muted italic">Customer Deleted</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ t.transaction_type }}">
+                                {{ t.transaction_type.upper() }}
+                            </span>
+                        </td>
+                        <td class="text-right font-mono font-medium {% if t.transaction_type == 'debit' %}text-danger{% else %}text-success{% endif %}">
+                            Rs. {{ "%.2f"|format(t.amount) }}
+                        </td>
+                        <td class="text-muted text-sm">
+                            {{ t.description or '—' }}
+                        </td>
+                        <td class="text-center">
+                            <div class="vault-action-group">
+                                {% if t.customer_name %}
+                                <form method="POST" action="{{ url_for('restore_trans', archive_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Restore this transaction and re-apply Rs. {{ '%.2f'|format(t.amount) }} to {{ t.customer_name }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn-restore" title="Restore back to customer ledger">
+                                        ⚡ Reroll / Restore
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted text-xs">Cannot restore (customer gone)</span>
+                                {% endif %}
+
+                                <form method="POST" action="{{ url_for('purge_trans', archive_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Permanently purge this record? This cannot be undone.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn-danger-outline" title="Permanently delete forever">
+                                        Purge
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="vault-no-results" class="empty-message is-hidden">
+            <p>No archived records match your search.</p>
+        </div>
+        {% else %}
+        <div class="empty-message">
+            <div class="empty-icon">✨</div>
+            <h3>Recovery Vault is Empty</h3>
+            <p>You have no deleted or reversed transactions. All transactions in your ledger are active and intact.</p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('dashboard') }}" class="btn-secondary">Return to Dashboard</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('vault-search');
+        const rows = Array.from(document.querySelectorAll('.vault-row'));
+        const noResults = document.getElementById('vault-no-results');
+
+        if (!searchInput || !rows.length) return;
+
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            rows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const matches = text.includes(query);
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.classList.toggle('is-hidden', visibleCount !== 0);
+            }
+        });
+    });
+</script>
+{% endblock %}

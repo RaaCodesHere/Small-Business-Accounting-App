@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt #HF-{{ "%05d"|format(transaction.id) }} - {{ transaction.customer_name }} - HisabFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="receipt-body">
+    <!-- Non-printing floating toolbar -->
+    <div class="print-toolbar no-print">
+        <div class="print-toolbar-container">
+            <div class="print-title">
+                🧾 Transaction Receipt <strong>#HF-{{ "%05d"|format(transaction.id) }}</strong>
+            </div>
+            <div class="print-actions">
+                <button type="button" onclick="window.print()" class="btn-print">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print / Save PDF
+                </button>
+                <a href="{{ url_for('ledger', customer_id=transaction.customer_id) }}" class="btn-secondary">
+                    Back to Ledger
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Receipt Card -->
+    <div class="receipt-container">
+        <div class="receipt-card">
+            <!-- Header -->
+            <div class="receipt-header">
+                <div class="receipt-brand">
+                    <div class="receipt-logo">H</div>
+                    <div>
+                        <h2>HisabFlow</h2>
+                        <p class="receipt-tagline">Billing & Financial Ledger</p>
+                    </div>
+                </div>
+                <div class="receipt-meta">
+                    <div class="receipt-badge {% if transaction.transaction_type == 'credit' %}receipt-badge-credit{% else %}receipt-badge-debit{% endif %}">
+                        {% if transaction.transaction_type == 'credit' %}
+                            PAYMENT RECEIVED
+                        {% else %}
+                            DEBIT / INVOICE CHARGE
+                        {% endif %}
+                    </div>
+                    <div class="receipt-num">VOUCHER #HF-{{ "%05d"|format(transaction.id) }}</div>
+                    <div class="receipt-date">{{ transaction.created_at }}</div>
+                </div>
+            </div>
+
+            <div class="receipt-divider"></div>
+
+            <!-- Party Details -->
+            <div class="receipt-party-grid">
+                <div class="receipt-party-box">
+                    <span class="receipt-label">CUSTOMER / ACCOUNT:</span>
+                    <h3 class="receipt-customer-name">{{ transaction.customer_name }}</h3>
+                    <p class="receipt-phone">📞 {{ transaction.customer_phone }}</p>
+                </div>
+                <div class="receipt-party-box text-right">
+                    <span class="receipt-label">ISSUED BY:</span>
+                    <h3 class="receipt-customer-name">{{ current_user.username }}</h3>
+                    <p class="receipt-phone">✉️ {{ current_user.email }}</p>
+                </div>
+            </div>
+
+            <!-- Amount Showcase Box -->
+            <div class="receipt-amount-box {% if transaction.transaction_type == 'credit' %}bg-credit{% else %}bg-debit{% endif %}">
+                <div class="amount-title">TRANSACTION AMOUNT</div>
+                <div class="amount-number">Rs. {{ "%.2f"|format(transaction.amount) }}</div>
+                <div class="amount-type-desc">
+                    {% if transaction.transaction_type == 'credit' %}
+                        Credited to account (Balance increased / Due settled)
+                    {% else %}
+                        Debited to account (Payable / Dues added)
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Details Table -->
+            <table class="receipt-details-table">
+                <tbody>
+                    <tr>
+                        <td class="receipt-td-label">Transaction Reference:</td>
+                        <td class="receipt-td-value font-mono">TX-{{ "%05d"|format(transaction.id) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="receipt-td-label">Description / Remarks:</td>
+                        <td class="receipt-td-value">{{ transaction.description or 'Standard account transaction' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="receipt-td-label">Account Balance After Entry:</td>
+                        <td class="receipt-td-value font-mono font-bold {% if transaction.balance_after >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            Rs. {{ "%.2f"|format(transaction.balance_after) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="receipt-td-label">Current Live Balance:</td>
+                        <td class="receipt-td-value font-mono">
+                            Rs. {{ "%.2f"|format(transaction.customer_current_balance) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Signatures -->
+            <div class="receipt-signatures">
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <p>Customer Signature</p>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <p>Authorized Signature & Stamp</p>
+                </div>
+            </div>
+
+            <!-- Footer note -->
+            <div class="receipt-footer">
+                <p>Generated by HisabFlow on {{ now.strftime('%Y-%m-%d %H:%M:%S') }} • Official Financial Voucher</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

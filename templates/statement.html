@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statement of Account - {{ customer.name }} - HisabFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="statement-body">
+    <!-- Non-printing floating toolbar -->
+    <div class="print-toolbar no-print">
+        <div class="print-toolbar-container">
+            <div class="print-title">
+                📊 Statement of Account: <strong>{{ customer.name }}</strong>
+            </div>
+            <div class="print-actions">
+                <button type="button" onclick="window.print()" class="btn-print">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print / Save PDF
+                </button>
+                <a href="{{ url_for('export_customer_csv', customer_id=customer.id) }}" class="btn-export">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Download CSV
+                </a>
+                <a href="{{ url_for('ledger', customer_id=customer.id) }}" class="btn-secondary">
+                    Back to Ledger
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Statement Sheet -->
+    <div class="statement-container">
+        <div class="statement-sheet">
+            <!-- Header -->
+            <div class="statement-header">
+                <div>
+                    <div class="receipt-brand">
+                        <div class="receipt-logo">H</div>
+                        <div>
+                            <h2>HisabFlow</h2>
+                            <p class="receipt-tagline">Financial & Customer Ledger Management</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <h1 class="statement-title">STATEMENT OF ACCOUNT</h1>
+                    <div class="statement-meta-line"><strong>Statement Date:</strong> {{ now.strftime('%B %d, %Y') }}</div>
+                    <div class="statement-meta-line"><strong>Issued By:</strong> {{ current_user.username }}</div>
+                </div>
+            </div>
+
+            <div class="statement-divider"></div>
+
+            <!-- Customer & Account Info -->
+            <div class="statement-grid">
+                <div class="statement-box">
+                    <span class="statement-box-label">ACCOUNT HOLDER</span>
+                    <h3 class="statement-client-name">{{ customer.name }}</h3>
+                    <p class="statement-client-info"><strong>Phone:</strong> {{ customer.phone }}</p>
+                    <p class="statement-client-info"><strong>Account Established:</strong> {{ customer.created_at[:10] }}</p>
+                </div>
+                <div class="statement-box statement-balance-box {% if customer.current_balance >= 0 %}balance-credit{% else %}balance-owed{% endif %}">
+                    <span class="statement-box-label">CURRENT OUTSTANDING BALANCE</span>
+                    <div class="statement-balance-amt">Rs. {{ "%.2f"|format(customer.current_balance) }}</div>
+                    <div class="statement-balance-status">
+                        {% if customer.current_balance > 0 %}
+                            Credit in customer's favor (Advance / Deposit)
+                        {% elif customer.current_balance < 0 %}
+                            Outstanding balance payable to you
+                        {% else %}
+                            Account fully settled (Zero balance)
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary KPI Strip -->
+            <div class="statement-kpi-strip">
+                <div class="kpi-item">
+                    <span class="kpi-label">TOTAL TRANSACTIONS</span>
+                    <span class="kpi-value">{{ transactions|length }}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">TOTAL PAID / CREDIT INFLOW</span>
+                    <span class="kpi-value text-success">+ Rs. {{ "%.2f"|format(total_credit) }}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">TOTAL CHARGED / DEBIT OUTFLOW</span>
+                    <span class="kpi-value text-danger">- Rs. {{ "%.2f"|format(total_debit) }}</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">NET CLOSING BALANCE</span>
+                    <span class="kpi-value {% if customer.current_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        Rs. {{ "%.2f"|format(customer.current_balance) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Statement Table -->
+            <table class="statement-table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Ref #</th>
+                        <th>Type</th>
+                        <th>Description / Note</th>
+                        <th class="text-right">Debit (Rs.)</th>
+                        <th class="text-right">Credit (Rs.)</th>
+                        <th class="text-right">Balance (Rs.)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if transactions %}
+                        {% for t in transactions %}
+                        <tr>
+                            <td class="font-mono text-sm text-muted">{{ t.created_at }}</td>
+                            <td class="font-mono text-sm">TX-{{ "%05d"|format(t.id) }}</td>
+                            <td>
+                                <span class="badge badge-{{ t.transaction_type }}">
+                                    {{ t.transaction_type.upper() }}
+                                </span>
+                            </td>
+                            <td>{{ t.description or 'Account Transaction' }}</td>
+                            <td class="text-right font-mono {% if t.transaction_type == 'debit' %}text-danger font-medium{% else %}text-muted{% endif %}">
+                                {% if t.transaction_type == 'debit' %}Rs. {{ "%.2f"|format(t.amount) }}{% else %}—{% endif %}
+                            </td>
+                            <td class="text-right font-mono {% if t.transaction_type == 'credit' %}text-success font-medium{% else %}text-muted{% endif %}">
+                                {% if t.transaction_type == 'credit' %}Rs. {{ "%.2f"|format(t.amount) }}{% else %}—{% endif %}
+                            </td>
+                            <td class="text-right font-mono font-medium">
+                                Rs. {{ "%.2f"|format(t.balance_after) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No transactions recorded for this account.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr class="statement-total-row">
+                        <td colspan="4" class="text-bold text-right">Totals / Closing Position:</td>
+                        <td class="text-right font-mono text-danger font-bold">Rs. {{ "%.2f"|format(total_debit) }}</td>
+                        <td class="text-right font-mono text-success font-bold">Rs. {{ "%.2f"|format(total_credit) }}</td>
+                        <td class="text-right font-mono font-bold {% if customer.current_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            Rs. {{ "%.2f"|format(customer.current_balance) }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Signatures Section -->
+            <div class="statement-signatures">
+                <div class="statement-sign-box">
+                    <p class="sign-instructions">Please review this statement and report any discrepancy within 15 days.</p>
+                </div>
+                <div class="statement-sign-box text-right">
+                    <div class="signature-line" style="margin-left: auto;"></div>
+                    <p class="sign-label">Authorized Signatory & Seal</p>
+                </div>
+            </div>
+
+            <div class="statement-footer">
+                <p>This is a computer-generated statement produced by HisabFlow on {{ now.strftime('%Y-%m-%d %H:%M:%S') }}.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
